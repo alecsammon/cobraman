@@ -82,6 +82,9 @@ type CobraManOptions struct {
 	// fileSuffix is the file extension to use for file name.  Defaults to the section
 	// for man templates and .md for the MarkdownTemplate template.
 	fileSuffix string
+
+	// CustomData allows passing custom data into the template
+	CustomData map[string]interface{}
 }
 
 // GenerateDocs - build man pages for the passed in cobra.Command
@@ -163,6 +166,8 @@ type manStruct struct {
 	Examples    string
 
 	CobraCmd *cobra.Command
+
+	CustomData map[string]interface{}
 }
 
 type manFlag struct {
@@ -279,8 +284,12 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	// SEE ALSO section
 	values.SeeAlsos = generateSeeAlsos(cmd, values.Section)
 
+	// Custom Data
+	values.CustomData = opts.CustomData
+
 	// Get template and generate the documentation page
 	_, _, t := getTemplate(templateName)
+
 	err := t.Execute(w, values)
 	if err != nil {
 		return err

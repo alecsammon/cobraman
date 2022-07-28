@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package man is a library for generating documentation out of a command
+// Package cobraman is a library for generating documentation out of a command
 // line structure created by the github.com/spf13/cobra library.
 package cobraman
 
@@ -154,7 +154,7 @@ type manStruct struct {
 	InheritedFlags    []manFlag
 	NonInheritedFlags []manFlag
 	SeeAlsos          []seeAlso
-	SubCommands       []string
+	SubCommands       []*cobra.Command
 
 	Author      string
 	Environment string
@@ -211,12 +211,12 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	values.NoArgs = strings.HasSuffix(argFuncName, "cobra.NoArgs")
 
 	if cmd.HasSubCommands() {
-		subCmdArr := make([]string, 0, 10)
+		subCmdArr := make([]*cobra.Command, 0, len(cmd.Commands()))
 		for _, c := range cmd.Commands() {
 			if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
 				continue
 			}
-			subCmdArr = append(subCmdArr, c.CommandPath())
+			subCmdArr = append(subCmdArr, c)
 		}
 		values.SubCommands = subCmdArr
 	}
@@ -290,25 +290,27 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 
 func genFlagArray(flags *pflag.FlagSet) []manFlag {
 	flagArray := make([]manFlag, 0, 15)
-	flags.VisitAll(func(flag *pflag.Flag) {
-		if len(flag.Deprecated) > 0 || flag.Hidden {
-			return
-		}
-		thisFlag := manFlag{
-			Name:        flag.Name,
-			NoOptDefVal: flag.NoOptDefVal,
-			DefValue:    flag.DefValue,
-			Usage:       flag.Usage,
-		}
-		if len(flag.ShorthandDeprecated) == 0 {
-			thisFlag.Shorthand = flag.Shorthand
-		}
-		hintArr, exists := flag.Annotations["man-arg-hints"]
-		if exists && len(hintArr) > 0 {
-			thisFlag.ArgHint = hintArr[0]
-		}
-		flagArray = append(flagArray, thisFlag)
-	})
+	flags.VisitAll(
+		func(flag *pflag.Flag) {
+			if len(flag.Deprecated) > 0 || flag.Hidden {
+				return
+			}
+			thisFlag := manFlag{
+				Name:        flag.Name,
+				NoOptDefVal: flag.NoOptDefVal,
+				DefValue:    flag.DefValue,
+				Usage:       flag.Usage,
+			}
+			if len(flag.ShorthandDeprecated) == 0 {
+				thisFlag.Shorthand = flag.Shorthand
+			}
+			hintArr, exists := flag.Annotations["man-arg-hints"]
+			if exists && len(hintArr) > 0 {
+				thisFlag.ArgHint = hintArr[0]
+			}
+			flagArray = append(flagArray, thisFlag)
+		},
+	)
 
 	return flagArray
 }

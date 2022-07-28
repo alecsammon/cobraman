@@ -20,7 +20,7 @@
 
 package main
 
-import "github.com/rayjohnson/cobraman/example/cmd"
+import "github.com/alecsammon/cobraman/example/cmd"
 
 func main() {
 	cmd.Execute()

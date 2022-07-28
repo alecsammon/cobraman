@@ -45,7 +45,7 @@ func TestAddDocGenerator(t *testing.T) {
 
 	// No error is thrown instead usage string is shown
 	assert.NoError(t, dg.Execute())
-	assert.Regexp(t, "Available Commands.+\n.+generate-mdoc", buf)
+	assert.Regexp(t, "Available Commands.+\n.+completion", buf)
 
 	buf.Reset()
 	args = []string{"generate-mdoc"}

@@ -16,7 +16,7 @@
 package cobraman
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,9 +29,12 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// CobraManOptions is used configure how GenerateManPages will
+// ErrMissingCommandName is returned with no command is provided.
+var ErrMissingCommandName = errors.New("you need a command name to have a man page")
+
+// Options is used configure how GenerateManPages will
 // do its job.
-type CobraManOptions struct {
+type Options struct {
 	// What section to generate the pages 4 (1 is the default if not set)
 	Section string
 
@@ -89,7 +92,7 @@ type CobraManOptions struct {
 
 // GenerateDocs - build man pages for the passed in cobra.Command
 // and all of its children.
-func GenerateDocs(cmd *cobra.Command, opts *CobraManOptions, directory string, templateName string) error {
+func GenerateDocs(cmd *cobra.Command, opts *Options, directory string, templateName string) (err error) {
 	// Set defaults
 	validate(opts, templateName)
 	if directory == "" {
@@ -106,22 +109,24 @@ func GenerateDocs(cmd *cobra.Command, opts *CobraManOptions, directory string, t
 	}
 
 	// Generate file name and open the file
-	basename := strings.Replace(cmd.CommandPath(), " ", opts.fileCmdSeparator, -1)
+	basename := strings.ReplaceAll(cmd.CommandPath(), " ", opts.fileCmdSeparator)
 	if basename == "" {
-		return fmt.Errorf("you need a command name to have a man page")
+		return ErrMissingCommandName
 	}
 	filename := filepath.Join(directory, basename+"."+opts.fileSuffix)
-	f, err := os.Create(filename)
+	f, err := os.Create(filename) //nolint:gosec // the file is constructed safely
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		err = f.Close()
+	}()
 
 	// Generate the documentation
 	return GenerateOnePage(cmd, opts, templateName, f)
 }
 
-func validate(opts *CobraManOptions, templateName string) {
+func validate(opts *Options, templateName string) {
 	if opts.Section == "" {
 		opts.Section = "1"
 	}
@@ -188,8 +193,10 @@ type seeAlso struct {
 }
 
 // GenerateOnePage will generate one documentation page and output the result to w
-// TODO: document use of this function in README
-func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName string, w io.Writer) error {
+// TODO: document use of this function in README.
+//
+//nolint:funlen,gocognit,cyclop // method is readable
+func GenerateOnePage(cmd *cobra.Command, opts *Options, templateName string, w io.Writer) error {
 	// Set defaults - these would already be set unless GenerateOnePage called directly
 	validate(opts, templateName)
 
@@ -228,7 +235,7 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 
 	// DESCRIPTION
 	description := cmd.Long
-	if len(description) == 0 {
+	if description == "" {
 		description = cmd.Short
 	}
 	values.Description = description
@@ -239,7 +246,7 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	values.NonInheritedFlags = genFlagArray(cmd.NonInheritedFlags())
 
 	// ENVIRONMENT section
-	altEnvironmentSection, _ := cmd.Annotations["man-environment-section"]
+	altEnvironmentSection := cmd.Annotations["man-environment-section"]
 	if opts.Environment != "" || altEnvironmentSection != "" {
 		if altEnvironmentSection != "" {
 			values.Environment = altEnvironmentSection
@@ -249,7 +256,7 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	}
 
 	// FILES section
-	altFilesSection, _ := cmd.Annotations["man-files-section"]
+	altFilesSection := cmd.Annotations["man-files-section"]
 	if opts.Files != "" || altFilesSection != "" {
 		if altFilesSection != "" {
 			values.Files = altFilesSection
@@ -259,7 +266,7 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	}
 
 	// BUGS section
-	altBugsSection, _ := cmd.Annotations["man-bugs-section"]
+	altBugsSection := cmd.Annotations["man-bugs-section"]
 	if opts.Bugs != "" || altBugsSection != "" {
 		if altBugsSection != "" {
 			values.Bugs = altBugsSection
@@ -269,7 +276,7 @@ func GenerateOnePage(cmd *cobra.Command, opts *CobraManOptions, templateName str
 	}
 
 	// EXAMPLES section
-	altExampleSection, _ := cmd.Annotations["man-examples-section"]
+	altExampleSection := cmd.Annotations["man-examples-section"]
 	if cmd.Example != "" || altExampleSection != "" {
 		if altExampleSection != "" {
 			values.Examples = altExampleSection
@@ -310,7 +317,7 @@ func genFlagArray(flags *pflag.FlagSet) []manFlag {
 				DefValue:    flag.DefValue,
 				Usage:       flag.Usage,
 			}
-			if len(flag.ShorthandDeprecated) == 0 {
+			if flag.ShorthandDeprecated == "" {
 				thisFlag.Shorthand = flag.Shorthand
 			}
 			hintArr, exists := flag.Annotations["man-arg-hints"]

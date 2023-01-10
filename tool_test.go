@@ -31,7 +31,7 @@ func TestAddDocGenerator(t *testing.T) {
 	appCmd := &cobra.Command{}
 	dg := CreateDocGenCmdLineTool(appCmd)
 
-	opts := &CobraManOptions{}
+	opts := &Options{}
 
 	// Template does not exist
 	assert.Panics(t, func() { dg.AddDocGenerator(opts, "foo") })
@@ -66,7 +66,7 @@ func TestExecute(t *testing.T) {
 	appCmd.AddCommand(cmd2, cmd3)
 
 	dg := CreateDocGenCmdLineTool(appCmd)
-	opts := &CobraManOptions{}
+	opts := &Options{}
 	dg.AddDocGenerator(opts, "mdoc")
 	dg.AddDocGenerator(opts, "markdown")
 	dg.AddBashCompletionGenerator("foo.txt")

@@ -17,7 +17,8 @@ func init() {
 	RegisterTemplate("troff", "-", "use_section", troffManTemplate)
 }
 
-// troffManTemplate generates a man page with only basic troff macros
+// troffManTemplate generates a man page with only basic troff macros.
+// nolint:lll // this is a template
 const troffManTemplate = `.TH "{{.CommandPath | dashify | backslashify | upper}}" "{{ .Section }}" "{{.CenterFooter}}" "{{.LeftFooter}}" "{{.CenterHeader}}" 
 .\" disable hyphenation
 .nh
